@@ -1,0 +1,53 @@
+name: Build cloudflared image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "cloudflared tag to build, for example 2025.7.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: docker.io
+  NAMESPACE: vasary
+  IMAGE_NAME: cloudflared
+  PLATFORM: linux/arm/v7
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          build-args: |
+            CLOUDFLARED_VERSION=${{ github.event.inputs.version }}
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
