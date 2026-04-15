@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "cloudflared tag to build, for example 2025.7.0"
-        required: false
+        description: "cloudflared tag to build, for example 2026.3.0"
+        required: true
         type: string
 
 permissions:
@@ -25,23 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve version
-        id: vars
-        shell: bash
-        run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            version="${{ github.event.inputs.version }}"
-          else
-            version="$(sed -n 's/^VERSION := //p' Makefile | head -n1)"
-          fi
-
-          if [ -z "${version}" ]; then
-            echo "Failed to resolve CLOUDFLARED_VERSION" >&2
-            exit 1
-          fi
-
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -52,8 +35,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ vars.DOCKERHUB_TOKEN }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -61,10 +44,10 @@ jobs:
           context: .
           file: Dockerfile
           build-args: |
-            CLOUDFLARED_VERSION=${{ steps.vars.outputs.version }}
+            CLOUDFLARED_VERSION=${{ github.event.inputs.version }}
           platforms: ${{ env.PLATFORM }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
