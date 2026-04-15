@@ -1,8 +1,6 @@
 name: Build cloudflared image
 
 on:
-  push:
-    branches: ["master"]
   workflow_dispatch:
     inputs:
       version:
